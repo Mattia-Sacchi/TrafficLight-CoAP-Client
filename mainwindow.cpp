@@ -58,9 +58,7 @@ void MainWindow::sendClicked()
     QJsonDocument jsonDoc(jsonObject);
 
     QByteArray jsonString = jsonDoc.toJson(QJsonDocument::Compact);
-    qDebug() << "Compact JSON:" << jsonString;
-
-    // send on topic
+    qDebug() << "JSON:" << jsonString;
 
 }
 
@@ -79,10 +77,12 @@ void MainWindow::commandChanged(int index)
         case C_Automatic:
             choosers = true;
             break;
-        case C_Strobe:
         case C_Blinking:
-            freq = true;
             tl = true;
+        case C_Strobe:
+
+            freq = true;
+
             break;
         default:
         case C_Random:
