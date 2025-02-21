@@ -2,7 +2,6 @@
 #include "ui_timechooser.h"
 #include "Enums.h"
 
-
 TimeChooser::TimeChooser(QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::TimeChooser)

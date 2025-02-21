@@ -4,6 +4,10 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include "Enums.h"
+#include <QCoapMessage>
+#include <QCoapRequest>
+
+static const QString defaultIP = "192.168.4.1";
 
 uint8_t MainWindow::calculateWhich()
 {
@@ -21,11 +25,21 @@ QJsonArray createTimings(int greenTime, int yellowTime, int redTime)
     jsonArray.append(yellowTime);
     jsonArray.append(redTime);
     return jsonArray;
+}
 
+void MainWindow::onFinished(QCoapReply *) {}
+
+void MainWindow::onError(QCoapReply * ,QtCoap::Error code)
+{
+    ui->statusbar->showMessage(QString("Error: " + QString::number((int)code)));
 }
 
 void MainWindow::sendClicked()
 {
+
+    if(ui->addressLineEdit->text().isEmpty())
+        return;
+
     QJsonObject jsonObject;
     jsonObject["cmd"] = m_command;
 
@@ -33,13 +47,8 @@ void MainWindow::sendClicked()
 
     switch(m_command)
     {
-    case C_Manual:
-
-
-        break;
     case C_Automatic:
     {
-
         jsonObject["timings"] = createTimings(ui->greenChooser->time(),
                                               ui->yellowChooser->time(),
                                               ui->redChooser->time());
@@ -51,14 +60,63 @@ void MainWindow::sendClicked()
         jsonObject["freq"] = frequency;
         break;
     default:
-    case C_Random:
         break;
     }
+
+
 
     QJsonDocument jsonDoc(jsonObject);
 
     QByteArray jsonString = jsonDoc.toJson(QJsonDocument::Compact);
+
+
+    QString urlString = QString("coap://%1/trafficlight").arg(ui->addressLineEdit->text());
+    QCoapRequest request(QUrl(urlString), QCoapMessage::Type::Confirmable);
+    m_client->put(request, QByteArray(jsonString));
     qDebug() << "JSON:" << jsonString;
+
+
+
+}
+
+void MainWindow::updateLights()
+{
+    sendClicked();
+    QString urlString = QString("coap://%1/light/").arg(ui->addressLineEdit->text());
+
+    QCoapRequest greenRequest(QUrl(urlString + "green"), QCoapMessage::Type::Confirmable);
+    m_client->put(greenRequest, QByteArray(ui->trafficLightWidget->greenLight()->isOn() ? "1" : "0"));
+    QCoapRequest yellowRequest(QUrl(urlString + "yellow"), QCoapMessage::Type::Confirmable);
+    m_client->put(yellowRequest, QByteArray(ui->trafficLightWidget->yellowLight()->isOn() ? "1" : "0"));
+    QCoapRequest redRequest(QUrl(urlString + "red"), QCoapMessage::Type::Confirmable);
+    m_client->put(redRequest, QByteArray(ui->trafficLightWidget->redLight()->isOn() ? "1" : "0"));
+    m_commandUpdated = true;
+
+}
+
+
+void MainWindow::lightClicked(QColor color, bool state)
+{
+    if(ui->addressLineEdit->text().isEmpty())
+        return;
+
+    if(!m_commandUpdated)
+    {
+        updateLights();
+        return;
+    }
+    sendClicked();
+
+    QString colorName = "green";
+
+    if(color == Qt::yellow)
+        colorName = "yellow";
+    else if(color == Qt::red)
+        colorName = "red";
+
+    QString urlString = QString("coap://%1/light/").arg(ui->addressLineEdit->text());
+    QCoapRequest greenRequest(QUrl(urlString + colorName), QCoapMessage::Type::Confirmable);
+    m_client->put(greenRequest, QByteArray(state ? "1" : "0"));
 
 }
 
@@ -72,6 +130,7 @@ void MainWindow::commandChanged(int index)
     switch(m_command)
     {
         case C_Manual:
+            m_commandUpdated = false;
             tl = true;
             break;
         case C_Automatic:
@@ -79,8 +138,8 @@ void MainWindow::commandChanged(int index)
             break;
         case C_Blinking:
             tl = true;
+            m_commandUpdated = false;
         case C_Strobe:
-
             freq = true;
 
             break;
@@ -88,11 +147,11 @@ void MainWindow::commandChanged(int index)
         case C_Random:
             break;
     }
-        ui->redChooser->setEnabled(choosers);
-        ui->yellowChooser->setEnabled(choosers);
-        ui->greenChooser->setEnabled(choosers);
-        ui->frequencySpinBox->setEnabled(freq);
-        ui->trafficLightWidget->setEnabled(tl);
+    ui->redChooser->setEnabled(choosers);
+    ui->yellowChooser->setEnabled(choosers);
+    ui->greenChooser->setEnabled(choosers);
+    ui->frequencySpinBox->setEnabled(freq);
+    ui->trafficLightWidget->setEnabled(tl);
 
 }
 
@@ -102,6 +161,14 @@ MainWindow::MainWindow(QWidget *parent)
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
+    m_client = new QCoapClient();
+    connect(m_client, &QCoapClient::finished, this, &MainWindow::onFinished);
+    connect(m_client, &QCoapClient::error, this, &MainWindow::onError);
+
+    ui->addressLineEdit->setText(defaultIP);
+
+
 
     ui->commandComboBox->addItem("Manual", C_Manual);
     ui->commandComboBox->addItem("Automatic", C_Automatic);
@@ -114,7 +181,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->commandComboBox, &QComboBox::currentIndexChanged, this, &MainWindow::commandChanged);
     commandChanged(0);
     connect(ui->sendButton,&QPushButton::clicked, this, &MainWindow::sendClicked);
-    connect(ui->trafficLightWidget, &TrafficLightWidget::toggled, this, [this](QColor, bool) { sendClicked(); });
+    connect(ui->trafficLightWidget, &TrafficLightWidget::toggled, this, &MainWindow::lightClicked);
 }
 
 MainWindow::~MainWindow()

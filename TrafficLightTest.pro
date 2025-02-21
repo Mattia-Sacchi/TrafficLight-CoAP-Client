@@ -1,4 +1,4 @@
-QT       += core network gui widgets
+QT       += core network gui widgets coap
 
 
 CONFIG += c++17
