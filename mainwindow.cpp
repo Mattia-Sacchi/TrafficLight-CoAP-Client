@@ -105,7 +105,11 @@ void MainWindow::lightClicked(QColor color, bool state)
         updateLights();
         return;
     }
-    sendClicked();
+
+    if(m_command == C_Blinking){
+        sendClicked();
+    }
+
 
     QString colorName = "green";
 
@@ -115,8 +119,8 @@ void MainWindow::lightClicked(QColor color, bool state)
         colorName = "red";
 
     QString urlString = QString("coap://%1/light/").arg(ui->addressLineEdit->text());
-    QCoapRequest greenRequest(QUrl(urlString + colorName), QCoapMessage::Type::Confirmable);
-    m_client->put(greenRequest, QByteArray(state ? "1" : "0"));
+    QCoapRequest request(QUrl(urlString + colorName), QCoapMessage::Type::Confirmable);
+    m_client->put(request, QByteArray(state ? "1" : "0"));
 
 }
 
@@ -152,6 +156,7 @@ void MainWindow::commandChanged(int index)
     ui->greenChooser->setEnabled(choosers);
     ui->frequencySpinBox->setEnabled(freq);
     ui->trafficLightWidget->setEnabled(tl);
+    sendClicked();
 
 }
 
@@ -167,7 +172,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_client, &QCoapClient::error, this, &MainWindow::onError);
 
     ui->addressLineEdit->setText(defaultIP);
-
+    ui->greenChooser->setTime(5000);
+    ui->yellowChooser->setTime(1000);
+    ui->redChooser->setTime(7000);
 
 
     ui->commandComboBox->addItem("Manual", C_Manual);

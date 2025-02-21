@@ -9,13 +9,23 @@ TimeChooser::TimeChooser(QWidget *parent)
     ui->setupUi(this);
     ui->horizontalSlider->setMaximum(MaxTime);
     ui->horizontalSlider->setMinimum(MinTime);
-    ui->horizontalSlider->setTickInterval(MinTime);
+    ui->horizontalSlider->setPageStep(MinTime);
     ui->horizontalSlider->setValue(MinTime);
-    connect(ui->horizontalSlider, &QSlider::sliderMoved, this, [this] (int value)
+    connect(ui->horizontalSlider, &QSlider::valueChanged, this, [this] (int value)
             {
-        m_time = value;
         ui->valueLabel->setText(QString::number(value));
     });
+}
+
+void TimeChooser::setTime(int value)
+{
+    ui->horizontalSlider->setValue(value);
+
+}
+
+int TimeChooser::time() const
+{
+    return ui->horizontalSlider->value();
 }
 
 

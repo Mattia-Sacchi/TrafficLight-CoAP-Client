@@ -14,10 +14,11 @@ class TimeChooser : public QWidget
 public:
     explicit TimeChooser(QWidget *parent = nullptr);
     ~TimeChooser();
-    int time() const { return m_time; }
+    int time() const;
+
+    void setTime(int value);
 
 private:
-    int m_time;
     Ui::TimeChooser *ui;
 };
 
